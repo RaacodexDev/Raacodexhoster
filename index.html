@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raacodèx</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      background: radial-gradient(circle at center, #0f172a, #020617);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      overflow: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      letter-spacing: 3px;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(56,189,248,0.4);
+      z-index: 1;
+    }
+
+    /* Garis bawah */
+    .line {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #38bdf8, transparent);
+      margin: 15px auto 0;
+      border-radius: 10px;
+    }
+
+    .container {
+      text-align: center;
+      z-index: 1;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>RAACODÈX</h1>
+    <div class="line"></div>
+  </div>
+
+</body>
+</html>
