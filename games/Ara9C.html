@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trash Sort Mini</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bio: #00f5a0;
+    --bio-dark: #00c97c;
+    --bio-glow: rgba(0,245,160,0.45);
+    --plas: #ffe500;
+    --plas-dark: #ccb800;
+    --plas-glow: rgba(255,229,0,0.45);
+    --haz: #ff3a5c;
+    --haz-dark: #cc2040;
+    --haz-glow: rgba(255,58,92,0.45);
+
+    --bg:    #080b14;
+    --bg2:   #0d1220;
+    --surface: rgba(255,255,255,0.04);
+    --surface2: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.09);
+    --text:  #e8eaf0;
+    --muted: rgba(232,234,240,0.45);
+
+    --accent: #7b61ff;
+    --accent-glow: rgba(123,97,255,0.4);
+
+    /* FIX: safe area insets for notch/home-bar devices */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @keyframes scanline {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: .06; }
+    50%       { opacity: .12; }
+  }
+  @keyframes floatUp {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.4); }
+  }
+  @keyframes burst {
+    0%   { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx),var(--ty)) scale(0); opacity: 0; }
+  }
+  @keyframes pulseRing {
+    0%   { transform: scale(.9); opacity: .9; }
+    100% { transform: scale(1.1); opacity: .7; }
+  }
+  @keyframes wrongShake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+  @keyframes timerUrgent {
+    0%,100% { transform: scale(1); color: var(--haz); }
+    50%      { transform: scale(1.18); color: #ff8800; }
+  }
+  @keyframes binBounce {
+    0%,100% { transform: scaleY(1); }
+    40%     { transform: scaleY(1.1); }
+    70%     { transform: scaleY(.95); }
+  }
+  @keyframes comboFlare {
+    0%   { transform: scale(1) rotate(-3deg); }
+    50%  { transform: scale(1.25) rotate(3deg); }
+    100% { transform: scale(1) rotate(-3deg); }
+  }
+  @keyframes itemSpawn {
+    0%   { opacity: 0; transform: scale(.4) rotate(-20deg); }
+    70%  { transform: scale(1.1) rotate(3deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes levelUp {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(.5); }
+    30%  { opacity: 1; transform: translate(-50%,-50%) scale(1.2); }
+    70%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(.8); }
+  }
+  @keyframes titleReveal {
+    0%   { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* FIX 1: Use 100dvh (dynamic viewport height) so browser UI is excluded */
+  html, body {
+    height: 100%;
+    /* Fallback for browsers that don't support dvh */
+    height: 100dvh;
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    /* FIX 2: Use dvh instead of vh everywhere */
+    min-height: 100dvh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── GRID BG ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(123,97,255,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123,97,255,.08) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridPulse 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(123,97,255,.6), transparent);
+    z-index: 999; pointer-events: none;
+    animation: scanline 6s linear infinite;
+  }
+
+  /* ── SCREENS ── */
+  /* FIX 3: Use 100dvh for screen height */
+  .screen {
+    display: none;
+    width: 100%;
+    height: 100dvh;
+    position: relative;
+    z-index: 1;
+  }
+  .screen.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ══════════════════════════════════
+     START SCREEN
+  ══════════════════════════════════ */
+  #startScreen {
+    gap: 0;
+    /* FIX 4: Add safe area padding so content not hidden behind notch/navbar */
+    padding: calc(32px + var(--safe-top)) 24px calc(32px + var(--safe-bottom));
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(123,97,255,.2) 0%, transparent 70%);
+    overflow-y: auto;
+  }
+
+  .start-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; letter-spacing: 3px;
+    color: var(--accent); text-transform: uppercase;
+    border: 1px solid rgba(123,97,255,.4);
+    padding: 4px 14px; border-radius: 100px;
+    margin-bottom: 20px;
+    background: rgba(123,97,255,.08);
+    animation: titleReveal .6s ease both;
+  }
+
+  .game-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900;
+    font-size: clamp(3rem, 9vw, 5.5rem);
+    line-height: 1;
+    text-align: center;
+    margin-bottom: 6px;
+    animation: titleReveal .6s .1s ease both;
+    position: relative;
+  }
+  .game-title .word-trash { color: #fff; }
+  .game-title .word-sort  {
+    -webkit-text-stroke: 2px var(--accent);
+    color: transparent;
+    position: relative;
+  }
+  .game-title .word-mini  {
+    display: block;
+    font-size: clamp(1.1rem, 3vw, 1.8rem);
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .game-tagline {
+    font-size: .9rem; color: var(--muted); text-align: center;
+    margin: 16px 0 28px;
+    animation: titleReveal .6s .2s ease both;
+  }
+
+  .cat-row {
+    display: flex; gap: 10px; margin-bottom: 32px;
+    animation: titleReveal .6s .3s ease both;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .cat-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 100px;
+    font-size: .78rem; font-weight: 700;
+    letter-spacing: .5px;
+    backdrop-filter: blur(8px);
+  }
+  .cat-pill.g { background: rgba(0,245,160,.12); border: 1px solid rgba(0,245,160,.3); color: var(--bio); }
+  .cat-pill.y { background: rgba(255,229,0,.12);  border: 1px solid rgba(255,229,0,.3);  color: var(--plas); }
+  .cat-pill.r { background: rgba(255,58,92,.12);  border: 1px solid rgba(255,58,92,.3);  color: var(--haz); }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cat-pill.g .cat-dot { background: var(--bio); box-shadow: 0 0 8px var(--bio-glow); }
+  .cat-pill.y .cat-dot { background: var(--plas); box-shadow: 0 0 8px var(--plas-glow); }
+  .cat-pill.r .cat-dot { background: var(--haz); box-shadow: 0 0 8px var(--haz-glow); }
+
+  .btn-start {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800; font-size: 1.1rem;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 16px 52px; border: none; border-radius: 14px;
+    background: var(--accent);
+    color: #fff; cursor: pointer;
+    box-shadow: 0 0 32px var(--accent-glow), 0 4px 16px rgba(0,0,0,.4);
+    transition: transform .12s, box-shadow .12s;
+    animation: titleReveal .6s .4s ease both;
+    position: relative; overflow: hidden;
+  }
+  .btn-start::before {
+    content: '';
+    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
+    transition: left .5s;
+  }
+  .btn-start:hover::before { left: 150%; }
+  .btn-start:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 0 48px var(--accent-glow), 0 8px 24px rgba(0,0,0,.5); }
+  .btn-start:active { transform: scale(.97); }
+
+  .start-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: .62rem; color: var(--muted);
+    margin-top: 20px; letter-spacing: 1px;
+    animation: titleReveal .6s .5s ease both;
+  }
+
+  /* ══════════════════════════════════
+     GAME SCREEN
+  ══════════════════════════════════ */
+  /* FIX 5: Game screen uses flex column with fixed top/bottom, field takes remaining space */
+  #gameScreen {
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    /* Ensure it fills exactly the visual viewport */
+    height: 100dvh;
+    /* Add safe area padding */
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+
+  #gameScreen > .bg-glow {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 90%, rgba(0,245,160,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 90%, rgba(255,58,92,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 50% 10%, rgba(123,97,255,.1) 0%, transparent 60%);
+  }
+
+  /* HUD */
+  .hud {
+    position: relative; z-index: 10;
+    width: 100%; display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    /* FIX 6: Compact HUD height so it doesn't eat too much space */
+    padding: 8px 18px;
+    background: rgba(8,11,20,.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0; /* don't let HUD shrink */
+  }
+  .hud-block { display: flex; flex-direction: column; }
+  .hud-block:last-child { align-items: flex-end; }
+  .hud-block:nth-child(2) { align-items: center; }
+
+  .hud-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: .55rem; letter-spacing: 2px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 1px;
+  }
+  .hud-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.4rem; font-weight: 700; line-height: 1;
+  }
+  #scoreDisplay { color: #fff; }
+  #timerDisplay { color: var(--bio); transition: color .3s; }
+  #timerDisplay.urgent { animation: timerUrgent .5s infinite; }
+
+  .combo-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+  }
+  #comboDisplay {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem; font-weight: 700;
+    color: var(--plas);
+    min-width: 60px; text-align: center;
+    transition: transform .15s;
+  }
+  #comboDisplay.pop { animation: comboFlare .4s ease; }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    position: relative; z-index: 10;
+    width: 100%; height: 3px;
+    background: rgba(255,255,255,.07);
+    flex-shrink: 0;
+  }
+  #progressBar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--bio));
+    width: 100%;
+    transition: width 1s linear;
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  /* FIX 7: Field takes ALL remaining space between HUD and bins */
+  #field {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    /* min-height 0 so flex shrinks properly */
+    min-height: 0;
+  }
+
+  /* Level-up toast */
+  #levelToast {
+    display: none;
+    position: absolute; top: 40%; left: 50%;
+    transform: translate(-50%,-50%);
+    z-index: 200;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900; font-size: clamp(2rem, 6vw, 3rem);
+    color: var(--plas);
+    text-shadow: 0 0 30px var(--plas-glow);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #levelToast.show {
+    display: block;
+    animation: levelUp 1.2s ease forwards;
+  }
+
+  /* TRASH ITEMS */
+  .trash-item {
+    position: absolute;
+    width: clamp(58px, 13vw, 74px);
+    height: clamp(58px, 13vw, 74px);
+    border-radius: 20px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px;
+    cursor: grab;
+    touch-action: none;
+    z-index: 5;
+    animation: itemSpawn .35s cubic-bezier(.34,1.56,.64,1) both;
+    transition: box-shadow .15s, transform .1s;
+    border: 1.5px solid rgba(255,255,255,.15);
+    backdrop-filter: blur(4px);
+  }
+  .trash-item:hover { transform: scale(1.1) translateY(-4px); }
+  .trash-item.selected {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+    transform: scale(1.08);
+  }
+  .trash-item.dragging {
+    transform: scale(1.18) rotate(5deg);
+    z-index: 50; cursor: grabbing;
+    opacity: .92;
+  }
+  .trash-emoji { font-size: clamp(1.4rem, 4vw, 1.9rem); line-height: 1; }
+  .trash-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .42rem; letter-spacing: .5px;
+    text-transform: uppercase; opacity: .85;
+    color: #fff;
+  }
+
+  /* BINS */
+  .bins {
+    position: relative; z-index: 10;
+    width: 100%; display: flex;
+    justify-content: space-around; align-items: stretch;
+    /* FIX 8: Compact bin padding, and add safe-area for home bar */
+    padding: 8px 8px calc(10px + var(--safe-bottom));
+    gap: 8px;
+    background: rgba(8,11,20,.92);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0; /* don't let bins shrink */
+  }
+
+  .bin {
+    flex: 1; max-width: 160px;
+    /* FIX 9: Use clamp with smaller min so bins stay visible on small screens */
+    min-height: clamp(64px, 12vw, 90px);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 4px; cursor: pointer;
+    position: relative; overflow: hidden;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    border: 1.5px solid transparent;
+  }
+  .bin::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background: rgba(255,255,255,0);
+    transition: background .2s;
+  }
+  .bin.correct-flash::before { background: rgba(255,255,255,.2); }
+  .bin.wrong-flash::before   { background: rgba(255,0,0,.2); }
+
+  .bin.green {
+    background: linear-gradient(160deg, rgba(0,201,124,.18), rgba(0,245,160,.1));
+    border-color: rgba(0,245,160,.25);
+  }
+  .bin.yellow {
+    background: linear-gradient(160deg, rgba(204,184,0,.18), rgba(255,229,0,.1));
+    border-color: rgba(255,229,0,.25);
+  }
+  .bin.red {
+    background: linear-gradient(160deg, rgba(204,32,64,.18), rgba(255,58,92,.1));
+    border-color: rgba(255,58,92,.25);
+  }
+
+  .bin.hovered.green  { border-color: var(--bio);  box-shadow: 0 0 28px var(--bio-glow),  inset 0 0 20px rgba(0,245,160,.1); transform: scaleY(1.04); animation: binBounce .3s ease; }
+  .bin.hovered.yellow { border-color: var(--plas); box-shadow: 0 0 28px var(--plas-glow), inset 0 0 20px rgba(255,229,0,.1);  transform: scaleY(1.04); animation: binBounce .3s ease; }
+  .bin.hovered.red    { border-color: var(--haz);  box-shadow: 0 0 28px var(--haz-glow),  inset 0 0 20px rgba(255,58,92,.1); transform: scaleY(1.04); animation: binBounce .3s ease; }
+
+  .bin-icon-wrap {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+  }
+  .bin.green .bin-icon-wrap  { background: rgba(0,245,160,.2); }
+  .bin.yellow .bin-icon-wrap { background: rgba(255,229,0,.2); }
+  .bin.red .bin-icon-wrap    { background: rgba(255,58,92,.2); }
+
+  .bin-name {
+    font-family: 'Poppins', sans-serif;
+    font-size: clamp(.55rem, 1.8vw, .68rem);
+    font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  .bin.green .bin-name  { color: var(--bio); }
+  .bin.yellow .bin-name { color: var(--plas); }
+  .bin.red .bin-name    { color: var(--haz); }
+
+  /* Feedback float */
+  .feedback {
+    position: fixed;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700; font-size: 1.2rem;
+    pointer-events: none; z-index: 300;
+    animation: floatUp .85s ease-out forwards;
+    text-shadow: 0 0 16px currentColor;
+    white-space: nowrap;
+  }
+
+  /* Particle */
+  .particle {
+    position: fixed; border-radius: 50%;
+    pointer-events: none; z-index: 299;
+    animation: burst .55s ease-out forwards;
+  }
+
+  /* ══════════════════════════════════
+     END SCREEN
+  ══════════════════════════════════ */
+  #endScreen {
+    gap: 0;
+    padding: calc(20px + var(--safe-top)) 24px calc(20px + var(--safe-bottom));
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(123,97,255,.2) 0%, transparent 70%);
+    overflow-y: auto;
+    justify-content: flex-start;
+  }
+
+  /* Center end screen content */
+  #endScreen > * {
+    flex-shrink: 0;
+  }
+
+  /* FIX 10: End screen scrollable inner wrapper */
+  .end-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    width: 100%;
+    padding: 16px 0;
+    gap: 0;
+  }
+
+  .end-rank {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; letter-spacing: 3px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .end-emoji { font-size: clamp(2.5rem, 9vw, 4rem); margin-bottom: 4px; }
+  .end-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900; font-size: clamp(1.3rem, 4.5vw, 2rem);
+    color: #fff; margin-bottom: 4px;
+  }
+  .end-score {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(3.5rem, 12vw, 6rem);
+    line-height: 1;
+    background: linear-gradient(135deg, var(--plas), var(--bio));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(0,245,160,.3));
+    margin-bottom: 2px;
+  }
+  .end-score-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; letter-spacing: 3px; color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .end-stats {
+    display: flex; gap: 8px;
+    justify-content: center; margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px; padding: 10px 14px;
+    min-width: 72px;
+  }
+  .stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.3rem; font-weight: 700; color: #fff;
+  }
+  .stat-lbl {
+    font-size: .58rem; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted);
+    margin-top: 2px;
+  }
+  .stat-box.s-correct .stat-val { color: var(--bio); }
+  .stat-box.s-wrong   .stat-val { color: var(--haz); }
+  .stat-box.s-combo   .stat-val { color: var(--plas); }
+
+  .end-msg {
+    font-size: .85rem; color: var(--muted);
+    max-width: 300px; margin: 0 auto 20px;
+    line-height: 1.55;
+  }
+
+  .btn-restart {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800; font-size: 1.05rem;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 14px 44px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), #b361ff);
+    color: #fff; cursor: pointer;
+    box-shadow: 0 0 28px var(--accent-glow);
+    transition: transform .12s, box-shadow .12s;
+    margin-bottom: 8px;
+  }
+  .btn-restart:hover { transform: translateY(-3px) scale(1.03); }
+  .btn-restart:active { transform: scale(.96); }
+
+  /* Accuracy bar */
+  .accuracy-row {
+    width: 100%; max-width: 280px;
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 16px;
+  }
+  .accuracy-lbl {
+    display: flex; justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem; color: var(--muted); letter-spacing: 1px;
+  }
+  .accuracy-track {
+    height: 6px; background: var(--surface2);
+    border-radius: 100px; overflow: hidden;
+  }
+  #accuracyFill {
+    height: 100%; border-radius: 100px;
+    background: linear-gradient(90deg, var(--haz), var(--plas), var(--bio));
+    transition: width 1s cubic-bezier(.34,1.3,.64,1);
+    box-shadow: 0 0 8px rgba(0,245,160,.5);
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── START ─── -->
+<div id="startScreen" class="screen active">
+  <div class="start-badge">♻ Eco Challenge </div>
+  <h1 class="game-title">
+    <span class="word-trash">TRASH</span> <span class="word-sort">SORT</span>
+    <span class="word-mini">Mini</span>
+  </h1>
+  <p class="game-tagline">Pilah sampah, selamatkan bumi 🌍</p>
+  <div class="cat-row">
+    <div class="cat-pill g"><span class="cat-dot"></span>Organik</div>
+    <div class="cat-pill y"><span class="cat-dot"></span>Plastik</div>
+    <div class="cat-pill r"><span class="cat-dot"></span>B3</div>
+  </div>
+  <button class="btn-start" id="btnStart">MULAI GAME</button>
+  <p class="start-hint">[ drag / klik item → pilih bin ]</p>
+</div>
+
+<!-- ─── GAME ─── -->
+<div id="gameScreen" class="screen">
+  <div class="bg-glow"></div>
+  <div class="hud">
+    <div class="hud-block">
+      <span class="hud-lbl">Skor</span>
+      <span class="hud-val" id="scoreDisplay">0</span>
+    </div>
+    <div class="hud-block combo-wrap">
+      <span class="hud-lbl">Combo</span>
+      <span id="comboDisplay">—</span>
+    </div>
+    <div class="hud-block">
+      <span class="hud-lbl">Waktu</span>
+      <span class="hud-val" id="timerDisplay">60</span>
+    </div>
+  </div>
+  <div class="progress-bar-wrap"><div id="progressBar"></div></div>
+
+  <div id="field">
+    <div id="levelToast"></div>
+  </div>
+
+  <div class="bins">
+    <div class="bin green"  data-bin="organic"   onclick="handleBinClick('organic')">
+      <div class="bin-icon-wrap">🌿</div>
+      <div class="bin-name">Organik</div>
+    </div>
+    <div class="bin yellow" data-bin="plastic"   onclick="handleBinClick('plastic')">
+      <div class="bin-icon-wrap">♻️</div>
+      <div class="bin-name">Plastik</div>
+    </div>
+    <div class="bin red"    data-bin="hazardous" onclick="handleBinClick('hazardous')">
+      <div class="bin-icon-wrap">⚠️</div>
+      <div class="bin-name">B3</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── END ─── -->
+<div id="endScreen" class="screen">
+  <div class="end-inner">
+    <div class="end-rank" id="endRank">HASIL AKHIR</div>
+    <div class="end-emoji" id="endEmoji">🏆</div>
+    <div class="end-title" id="endTitle">Permainan Selesai!</div>
+    <div class="end-score" id="endScore">0</div>
+    <div class="end-score-lbl">POIN</div>
+    <div class="accuracy-row">
+      <div class="accuracy-lbl"><span>AKURASI</span><span id="accuracyPct">0%</span></div>
+      <div class="accuracy-track"><div id="accuracyFill" style="width:0%"></div></div>
+    </div>
+    <div class="end-stats">
+      <div class="stat-box s-correct"><div class="stat-val" id="endCorrect">0</div><div class="stat-lbl">Benar</div></div>
+      <div class="stat-box s-wrong">  <div class="stat-val" id="endWrong">0</div>  <div class="stat-lbl">Salah</div></div>
+      <div class="stat-box s-combo">  <div class="stat-val" id="endMaxCombo">0</div><div class="stat-lbl">Max Combo</div></div>
+    </div>
+    <div class="end-msg" id="endMsg"></div>
+    <button class="btn-restart" id="btnRestart">↺ MAIN LAGI</button>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+const TRASH_DATA = [
+  { emoji: '🍎', label: 'Apel',    type: 'organic',   bg: 'linear-gradient(135deg, #1a4d33, #0d6e3f)' },
+  { emoji: '🍌', label: 'Pisang',  type: 'organic',   bg: 'linear-gradient(135deg, #2d5a1b, #3a7a20)' },
+  { emoji: '🥦', label: 'Sayur',   type: 'organic',   bg: 'linear-gradient(135deg, #1b4d28, #26633a)' },
+  { emoji: '🍂', label: 'Daun',    type: 'organic',   bg: 'linear-gradient(135deg, #3d3010, #5a4a18)' },
+  { emoji: '🌽', label: 'Jagung',  type: 'organic',   bg: 'linear-gradient(135deg, #3d3a0a, #5a5510)' },
+  { emoji: '🥚', label: 'Cangkang',type: 'organic',   bg: 'linear-gradient(135deg, #2a3d1e, #3a5428)' },
+  { emoji: '🫐', label: 'Blueberry',type:'organic',   bg: 'linear-gradient(135deg, #1a1f40, #242e5a)' },
+  { emoji: '🥝', label: 'Kiwi',    type: 'organic',   bg: 'linear-gradient(135deg, #1e3d10, #2a5a18)' },
+  { emoji: '🧴', label: 'Botol',   type: 'plastic',   bg: 'linear-gradient(135deg, #3d3400, #5a4e00)' },
+  { emoji: '🥤', label: 'Gelas',   type: 'plastic',   bg: 'linear-gradient(135deg, #3a3000, #524600)' },
+  { emoji: '🛍️', label: 'Kantong', type: 'plastic',   bg: 'linear-gradient(135deg, #3d3800, #564f00)' },
+  { emoji: '📦', label: 'Kotak',   type: 'plastic',   bg: 'linear-gradient(135deg, #3d2e00, #5a4400)' },
+  { emoji: '🧃', label: 'Karton',  type: 'plastic',   bg: 'linear-gradient(135deg, #382c00, #504000)' },
+  { emoji: '🪣', label: 'Ember',   type: 'plastic',   bg: 'linear-gradient(135deg, #3a3600, #524e00)' },
+  { emoji: '🍶', label: 'Botol kaca',type:'plastic',  bg: 'linear-gradient(135deg, #2a3030, #363e3e)' },
+  { emoji: '🔋', label: 'Baterai', type: 'hazardous', bg: 'linear-gradient(135deg, #4d1520, #6e1e2a)' },
+  { emoji: '💡', label: 'Lampu',   type: 'hazardous', bg: 'linear-gradient(135deg, #4a1a10, #6a2418)' },
+  { emoji: '🖥️', label: 'Elektronik',type:'hazardous',bg: 'linear-gradient(135deg, #3a1428, #521e3a)' },
+  { emoji: '🧪', label: 'Kimia',   type: 'hazardous', bg: 'linear-gradient(135deg, #1e1040, #2a1858)' },
+  { emoji: '💉', label: 'Medis',   type: 'hazardous', bg: 'linear-gradient(135deg, #4d1010, #6a1818)' },
+  { emoji: '🔌', label: 'Kabel',   type: 'hazardous', bg: 'linear-gradient(135deg, #201028, #301840)' },
+  { emoji: '☣️', label: 'Biohazard',type:'hazardous', bg: 'linear-gradient(135deg, #3d1000, #5a1800)' },
+];
+
+const TOTAL_TIME = 60;
+
+// ── STATE ──────────────────────────────────────────────────────────────
+let score = 0, timeLeft = TOTAL_TIME;
+let comboCount = 0, maxCombo = 0;
+let correctCount = 0, wrongCount = 0;
+let activeItems = [];
+let spawnInterval, timerInterval, speedLevel = 1;
+let selectedItem = null, dragItem = null, dragOffX = 0, dragOffY = 0;
+let gameRunning = false, prevSpeedLevel = 1;
+
+// ── UTILS ──────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const field = $('field');
+const rand = (a, b) => Math.random() * (b - a) + a;
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+// ── START ──────────────────────────────────────────────────────────────
+function startGame() {
+  score = 0; timeLeft = TOTAL_TIME;
+  comboCount = 0; maxCombo = 0;
+  correctCount = 0; wrongCount = 0;
+  speedLevel = 1; prevSpeedLevel = 1;
+  activeItems = []; selectedItem = null; dragItem = null;
+  field.querySelectorAll('.trash-item').forEach(e => e.remove());
+  $('timerDisplay').classList.remove('urgent');
+  updateHUD();
+  updateProgress();
+  showScreen('gameScreen');
+  gameRunning = true;
+
+  for (let i = 0; i < 3; i++) setTimeout(spawnTrash, i * 300);
+
+  spawnInterval = setInterval(() => {
+    if (activeItems.length < 7 && gameRunning) spawnTrash();
+  }, 1400);
+
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateHUD();
+    updateProgress();
+
+    const elapsed = TOTAL_TIME - timeLeft;
+    const newSpeed = 1 + Math.floor(elapsed / 12) * 0.35;
+    if (newSpeed !== prevSpeedLevel && newSpeed > 1) {
+      prevSpeedLevel = newSpeed;
+      showLevelToast(`⚡ SPEED x${newSpeed.toFixed(1)}`);
+    }
+    speedLevel = newSpeed;
+
+    if (timeLeft <= 10) $('timerDisplay').classList.add('urgent');
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+}
+
+function updateProgress() {
+  $('progressBar').style.width = (timeLeft / TOTAL_TIME * 100) + '%';
+}
+
+// ── SPAWN ──────────────────────────────────────────────────────────────
+function spawnTrash() {
+  if (!gameRunning) return;
+  const data = TRASH_DATA[randInt(0, TRASH_DATA.length - 1)];
+  const el = document.createElement('div');
+  el.className = 'trash-item';
+  el.style.background = data.bg;
+
+  const fieldW = field.clientWidth;
+  const sz = Math.min(74, Math.max(58, fieldW * 0.13));
+  el.style.width = el.style.height = sz + 'px';
+  const x = rand(10, fieldW - sz - 10);
+  el.style.left = x + 'px';
+  el.style.top = '-90px';
+  el.innerHTML = `<span class="trash-emoji">${data.emoji}</span><span class="trash-label">${data.label}</span>`;
+
+  const glowColor = data.type === 'organic' ? 'rgba(0,245,160,.5)' :
+                    data.type === 'plastic'  ? 'rgba(255,229,0,.5)' :
+                                               'rgba(255,58,92,.5)';
+  el.style.boxShadow = `0 4px 24px rgba(0,0,0,.5), inset 0 0 0 1.5px ${glowColor}`;
+
+  const baseSpeed = rand(1.1, 1.8);
+  let y = -90;
+
+  el.addEventListener('mousedown', e => startDrag(e, item));
+  el.addEventListener('touchstart', e => startDrag(e, item), { passive: false });
+  el.addEventListener('click', () => {
+    if (Math.hypot(dragOffX, dragOffY) > 8) return;
+    selectItem(item);
+  });
+
+  field.appendChild(el);
+
+  const item = { el, data, y, baseSpeed, active: true };
+
+  item.raf = requestAnimationFrame(function fall() {
+    if (!item.active || !gameRunning) return;
+    item.y += item.baseSpeed * speedLevel;
+    el.style.top = item.y + 'px';
+    if (item.y > field.clientHeight + 20) {
+      removeItem(item); penalise(el); return;
+    }
+    item.raf = requestAnimationFrame(fall);
+  });
+
+  activeItems.push(item);
+}
+
+// ── DRAG ──────────────────────────────────────────────────────────────
+function startDrag(e, item) {
+  e.preventDefault();
+  if (selectedItem && selectedItem !== item) {
+    selectedItem.el.classList.remove('selected');
+    selectedItem = null;
+  }
+  dragItem = item;
+  dragOffX = 0; dragOffY = 0;
+  item.el.classList.add('dragging');
+  cancelAnimationFrame(item.raf);
+
+  const getXY = ev => ev.touches
+    ? [ev.touches[0].clientX, ev.touches[0].clientY]
+    : [ev.clientX, ev.clientY];
+
+  const [sx, sy] = getXY(e);
+  const rect = item.el.getBoundingClientRect();
+  const ox = sx - rect.left, oy = sy - rect.top;
+
+  function onMove(ev) {
+    if (!dragItem) return;
+    const [cx, cy] = getXY(ev);
+    dragOffX = cx - sx; dragOffY = cy - sy;
+    const fr = field.getBoundingClientRect();
+    dragItem.el.style.left = (cx - fr.left - ox) + 'px';
+    dragItem.el.style.top  = (cy - fr.top  - oy) + 'px';
+    dragItem.y = cy - fr.top - oy;
+    document.querySelectorAll('.bin').forEach(b => b.classList.remove('hovered'));
+    const bin = getBinAt(cx, cy);
+    if (bin) bin.classList.add('hovered');
+  }
+  function onUp(ev) {
+    cleanup();
+    document.querySelectorAll('.bin').forEach(b => b.classList.remove('hovered'));
+    if (!dragItem) return;
+    const [cx, cy] = ev.changedTouches
+      ? [ev.changedTouches[0].clientX, ev.changedTouches[0].clientY]
+      : [ev.clientX, ev.clientY];
+    const bin = getBinAt(cx, cy);
+    if (bin) judge(dragItem, bin.dataset.bin);
+    else resumeFall(dragItem);
+    dragItem = null;
+  }
+  function cleanup() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onUp);
+}
+
+function getBinAt(x, y) {
+  for (const bin of document.querySelectorAll('.bin')) {
+    const r = bin.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return bin;
+  }
+  return null;
+}
+
+function resumeFall(item) {
+  item.el.classList.remove('dragging');
+  item.raf = requestAnimationFrame(function fall() {
+    if (!item.active || !gameRunning) return;
+    item.y += item.baseSpeed * speedLevel;
+    item.el.style.top = item.y + 'px';
+    if (item.y > field.clientHeight + 20) { removeItem(item); penalise(item.el); return; }
+    item.raf = requestAnimationFrame(fall);
+  });
+}
+
+// ── CLICK SELECT ──────────────────────────────────────────────────────
+function selectItem(item) {
+  if (selectedItem) {
+    selectedItem.el.classList.remove('selected');
+    if (selectedItem === item) { selectedItem = null; return; }
+  }
+  selectedItem = item;
+  item.el.classList.add('selected');
+}
+
+function handleBinClick(binType) {
+  if (!selectedItem) return;
+  judge(selectedItem, binType);
+  selectedItem = null;
+}
+
+// ── JUDGE ─────────────────────────────────────────────────────────────
+function judge(item, binType) {
+  const correct = item.data.type === binType;
+  const pos = item.el.getBoundingClientRect();
+  const cx = pos.left + pos.width / 2;
+  const cy = pos.top  + pos.height / 2;
+
+  item.el.classList.remove('selected', 'dragging');
+  removeItem(item);
+
+  if (correct) {
+    comboCount++;
+    if (comboCount > maxCombo) maxCombo = comboCount;
+    const bonus = Math.min(comboCount - 1, 6);
+    score += 1 + bonus;
+    correctCount++;
+    flashBin(binType, true);
+    const txt = comboCount >= 3 ? `+${1+bonus} 🔥×${comboCount}` : `+${1+bonus}`;
+    showFeedback(cx, cy, txt, '#00f5a0');
+    burst(cx, cy, '#00f5a0', comboCount >= 3 ? 14 : 8);
+  } else {
+    comboCount = 0;
+    score = Math.max(0, score - 1);
+    wrongCount++;
+    flashBin(binType, false);
+    showFeedback(cx, cy, '−1', '#ff3a5c');
+    shake();
+  }
+  updateHUD();
+}
+
+function penalise(el) {
+  comboCount = 0;
+  score = Math.max(0, score - 1);
+  wrongCount++;
+  const r = el.getBoundingClientRect ? el.getBoundingClientRect() : { left: 50, top: 50, width: 60, height: 60 };
+  showFeedback(r.left + r.width / 2, r.top, '⬇ −1', '#ff8800');
+  updateHUD();
+}
+
+// ── REMOVE ────────────────────────────────────────────────────────────
+function removeItem(item) {
+  item.active = false;
+  cancelAnimationFrame(item.raf);
+  item.el.remove();
+  activeItems = activeItems.filter(i => i !== item);
+}
+
+// ── FX ────────────────────────────────────────────────────────────────
+function flashBin(binType, correct) {
+  const bin = document.querySelector(`.bin[data-bin="${binType}"]`);
+  if (!bin) return;
+  const cls = correct ? 'correct-flash' : 'wrong-flash';
+  bin.classList.add(cls);
+  setTimeout(() => bin.classList.remove(cls), 280);
+}
+
+function showFeedback(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'feedback';
+  el.textContent = text;
+  el.style.cssText = `left:${x - 40}px;top:${y - 40}px;color:${color};`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+function burst(x, y, color, count = 8) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const sz = rand(4, 10);
+    const angle = rand(0, Math.PI * 2);
+    const dist  = rand(28, 75);
+    const colors = [color, '#fff', '#7b61ff'];
+    const c = colors[randInt(0, colors.length - 1)];
+    p.style.cssText = `
+      width:${sz}px;height:${sz}px;
+      background:${c};
+      box-shadow:0 0 6px ${c};
+      left:${x}px;top:${y}px;
+      --tx:${Math.cos(angle)*dist}px;
+      --ty:${Math.sin(angle)*dist}px;
+    `;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+
+function shake() {
+  const f = field;
+  f.style.animation = 'none';
+  f.style.animation = 'wrongShake .35s ease';
+  setTimeout(() => f.style.animation = '', 350);
+}
+
+function showLevelToast(msg) {
+  const t = $('levelToast');
+  t.textContent = msg;
+  t.classList.remove('show');
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1300);
+}
+
+// ── HUD ────────────────────────────────────────────────────────────────
+function updateHUD() {
+  $('scoreDisplay').textContent = score;
+  $('timerDisplay').textContent = timeLeft;
+  const cd = $('comboDisplay');
+  if (comboCount >= 2) {
+    cd.textContent = `×${comboCount}`;
+    cd.style.color = comboCount >= 5 ? 'var(--haz)' : 'var(--plas)';
+    cd.classList.remove('pop');
+    void cd.offsetWidth;
+    cd.classList.add('pop');
+  } else {
+    cd.textContent = '—';
+    cd.style.color = 'var(--plas)';
+  }
+}
+
+// ── END ────────────────────────────────────────────────────────────────
+function endGame() {
+  gameRunning = false;
+  clearInterval(spawnInterval);
+  clearInterval(timerInterval);
+  activeItems.forEach(i => { i.active = false; cancelAnimationFrame(i.raf); i.el.remove(); });
+  activeItems = [];
+
+  const total = correctCount + wrongCount;
+  const acc   = total > 0 ? Math.round(correctCount / total * 100) : 0;
+
+  $('endScore').textContent   = score;
+  $('endCorrect').textContent = correctCount;
+  $('endWrong').textContent   = wrongCount;
+  $('endMaxCombo').textContent= maxCombo;
+  $('accuracyPct').textContent= acc + '%';
+  setTimeout(() => { $('accuracyFill').style.width = acc + '%'; }, 300);
+
+  let emoji, rank, msg;
+  if (score >= 50)      { emoji='🏆'; rank='S RANK — LEGENDA'; msg='Kamu pahlawan lingkungan sejati! Bumi berterima kasih. 🌍'; }
+  else if (score >= 35) { emoji='⭐'; rank='A RANK — HEBAT';   msg='Luar biasa! Hampir sempurna, satu lagi bisa lebih baik.'; }
+  else if (score >= 22) { emoji='👏'; rank='B RANK — BAGUS';   msg='Lumayan! Fokus lebih dan kamu bisa naik peringkat.'; }
+  else if (score >= 12) { emoji='🙂'; rank='C RANK — OKE';     msg='Sudah berusaha! Latihan lagi untuk hasil lebih baik.'; }
+  else                  { emoji='😅'; rank='D RANK — LATIHAN'; msg='Terus berlatih! Perhatikan warna tempat sampah ya.'; }
+
+  $('endEmoji').textContent = emoji;
+  $('endRank').textContent  = rank;
+  $('endMsg').textContent   = msg;
+  showScreen('endScreen');
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────────
+$('btnStart').addEventListener('click', startGame);
+$('btnRestart').addEventListener('click', startGame);
+document.addEventListener('touchmove', e => { if (gameRunning) e.preventDefault(); }, { passive: false });
+</script>
+</body>
+</html>
