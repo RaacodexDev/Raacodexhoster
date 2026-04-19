@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bersih-Bersih 🧺</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent:#00e676; --accent-glow:rgba(0,230,118,0.3);
+  --danger:#ff5252; --danger-glow:rgba(255,82,82,0.3);
+  --gold:#ffd740;   --gold-glow:rgba(255,215,64,0.35);
+  --bg:#07101c;
+  --card:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.09);
+  --text:#e8f5e9;
+  --dim:rgba(232,245,233,0.5);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  font-family:'Poppins',sans-serif;
+  background:var(--bg);color:var(--text);
+}
+
+/* ROOT: fills screen, no scroll */
+#root{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;
+  overflow:hidden;
+}
+
+/* HUD BAR */
+#hud{
+  width:100%;max-width:480px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px 4px;flex-shrink:0;
+}
+.brand{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
+  background:linear-gradient(120deg,var(--accent),#69f0ae);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.best-pill{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:3px 10px;
+  font-size:11px;color:var(--dim);
+  display:flex;align-items:center;gap:4px;
+}
+.best-pill b{font-family:'Syne',sans-serif;font-size:13px;color:var(--gold);}
+
+/* SCORE ROW */
+#score-row{
+  width:100%;max-width:480px;
+  display:flex;align-items:center;gap:8px;
+  padding:0 14px 6px;flex-shrink:0;
+}
+.score-num{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(26px,7vw,36px);line-height:1;min-width:70px;
+  letter-spacing:-1px;text-shadow:0 0 24px var(--accent-glow);
+}
+.score-num.bump{animation:sBump .22s ease-out;}
+@keyframes sBump{0%{transform:scale(1)}50%{transform:scale(1.13)}100%{transform:scale(1)}}
+
+.mid-col{flex:1;display:flex;flex-direction:column;gap:3px;}
+.speed-row{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;}
+.speed-track{height:4px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;}
+.speed-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--gold));transition:width .5s;}
+.combo-txt{
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--gold);
+  height:14px;overflow:hidden;line-height:14px;
+}
+.combo-txt.pop{animation:cPop .3s ease-out;}
+@keyframes cPop{0%{transform:scale(.8)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* timer arc — r=15, circ≈94.25 */
+.timer-wrap{position:relative;width:46px;height:46px;flex-shrink:0;}
+.timer-svg{width:46px;height:46px;transform:rotate(-90deg);}
+.t-track{fill:none;stroke:rgba(255,255,255,0.07);stroke-width:4;}
+.t-arc{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;
+  stroke-dasharray:94.25;stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear,stroke .4s;}
+.t-arc.low{stroke:var(--danger);}
+.timer-num{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
+}
+.timer-num.pulse{animation:tPulse .5s ease-in-out infinite;}
+@keyframes tPulse{0%,100%{color:var(--text)}50%{color:var(--danger);transform:scale(1.1)}}
+
+/* ARENA — takes all remaining vertical space */
+#arena-wrap{
+  width:100%;max-width:480px;
+  flex:1;min-height:0;
+  padding:0 10px;
+}
+#arena{
+  width:100%;height:100%;
+  border-radius:16px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,#060f1e 0%,#0a1f3a 28%,#153352 55%,#0d3d1c 76%,#061a0a 100%);
+  border:1.5px solid var(--border);
+  box-shadow:0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
+  cursor:crosshair;touch-action:none;
+}
+#arena::before{
+  content:'';position:absolute;left:0;right:0;top:57%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent-glow),transparent);
+  pointer-events:none;
+}
+.moon{
+  position:absolute;top:10px;right:14px;width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fffde7,#ffd740);
+  box-shadow:0 0 12px rgba(255,215,64,.5),0 0 36px rgba(255,215,64,.12);
+  pointer-events:none;
+}
+.cloud{
+  position:absolute;font-size:16px;opacity:.13;pointer-events:none;
+  animation:drift linear infinite;
+}
+.cloud:nth-child(2){top:12%;animation-duration:25s;animation-delay:-3s;}
+.cloud:nth-child(3){top:25%;animation-duration:33s;animation-delay:-12s;}
+@keyframes drift{from{left:-45px}to{left:calc(100% + 45px)}}
+
+.ground-deco{
+  position:absolute;bottom:0;left:0;right:0;height:40px;
+  display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px;
+  pointer-events:none;
+}
+.g-tree{font-size:20px;filter:brightness(.4) saturate(.5);}
+
+.basket{
+  position:absolute;bottom:7px;width:60px;height:40px;
+  transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;
+  pointer-events:none;z-index:10;
+  transition:left .04s linear;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));
+}
+.basket-body{
+  width:52px;height:36px;
+  background:linear-gradient(160deg,#8d6e63,#4e342e);
+  border-radius:3px 3px 8px 8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;position:relative;
+  border:2px solid #a1887f;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+}
+.basket-body::before{
+  content:'';position:absolute;top:-3px;left:-2px;right:-2px;height:5px;
+  background:#6d4c41;border-radius:3px;border:1px solid #8d6e63;
+}
+.basket-glow{width:42px;height:5px;border-radius:50%;margin-top:-1px;background:var(--accent-glow);filter:blur(3px);}
+
+.danger-line{
+  position:absolute;bottom:50px;left:0;right:0;height:1.5px;
+  background:repeating-linear-gradient(90deg,var(--danger) 0,var(--danger) 6px,transparent 6px,transparent 12px);
+  opacity:.22;pointer-events:none;
+}
+
+.fi{
+  position:absolute;font-size:22px;pointer-events:none;z-index:5;
+  transform:translateX(-50%);
+  animation:fall linear forwards;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));
+}
+@keyframes fall{from{top:-30px}to{top:108%}}
+
+.cf{
+  position:absolute;pointer-events:none;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:800;
+  color:var(--accent);text-shadow:0 0 10px var(--accent-glow);
+  animation:riseUp .7s ease-out forwards;z-index:20;
+  transform:translateX(-50%);
+}
+.cf.miss{color:var(--danger);text-shadow:0 0 10px var(--danger-glow);}
+@keyframes riseUp{
+  0%{opacity:1;transform:translateX(-50%) translateY(0)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-40px)}
+}
+
+.bp{
+  position:absolute;pointer-events:none;font-size:12px;z-index:20;
+  animation:bFly .55s ease-out forwards;transform:translateX(-50%);
+}
+@keyframes bFly{
+  0%{opacity:1;transform:translateX(-50%) translate(0,0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translate(var(--tx),var(--ty)) scale(.3)}
+}
+
+/* PANELS */
+#panels{
+  width:100%;max-width:480px;
+  display:flex;gap:6px;padding:4px 10px 8px;flex-shrink:0;
+}
+.panel{
+  flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:7px 10px;
+}
+.pl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);}
+.pv{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1.1;}
+.pv.g{color:var(--accent);}.pv.r{color:var(--danger);}.pv.y{color:var(--gold);}
+.ps{font-size:9px;color:var(--dim);margin-top:1px;}
+
+/* OVERLAYS */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(4,8,16,.96);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px 20px;overflow-y:auto;
+  backdrop-filter:blur(14px);
+}
+.overlay.off{display:none;}
+
+.si{font-size:clamp(48px,13vw,68px);animation:bob 2.4s ease-in-out infinite;margin-bottom:6px;}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.st{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(24px,8vw,40px);letter-spacing:-1px;
+  background:linear-gradient(135deg,#fff 30%,var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-align:center;margin-bottom:4px;
+}
+.ss{font-size:12px;color:var(--dim);text-align:center;margin-bottom:16px;line-height:1.5;}
+
+.hc-list{display:flex;flex-direction:column;gap:7px;width:100%;max-width:340px;margin-bottom:18px;}
+.hc{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;padding:9px 13px;
+  display:flex;align-items:center;gap:11px;font-size:12px;color:var(--dim);
+}
+.hc strong{color:var(--text);display:block;font-size:12px;margin-bottom:1px;}
+.hi{font-size:20px;flex-shrink:0;}
+
+.btn-go{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:.3px;
+  padding:13px 40px;border:none;border-radius:50px;
+  background:linear-gradient(135deg,var(--accent),#00c853);
+  color:#03200d;cursor:pointer;
+  box-shadow:0 6px 28px var(--accent-glow);
+  transition:all .16s;
+}
+.btn-go:hover{transform:translateY(-2px);}
+.btn-go:active{transform:scale(.96);}
+
+/* END */
+.et{font-size:clamp(44px,12vw,62px);animation:bob 2.4s ease-in-out infinite;margin-bottom:3px;}
+.new-rec{
+  background:linear-gradient(135deg,var(--gold),#ff8f00);
+  color:#1a0800;font-family:'Syne',sans-serif;font-weight:800;
+  font-size:11px;padding:3px 11px;border-radius:20px;
+  margin-bottom:5px;display:none;
+}
+.er{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(17px,5vw,26px);color:var(--gold);text-align:center;margin-bottom:3px;}
+.esb{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(42px,12vw,64px);line-height:1;letter-spacing:-2px;text-shadow:0 0 36px var(--accent-glow);}
+.esl{font-size:10px;color:var(--dim);text-align:center;margin-bottom:12px;}
+.e-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:100%;max-width:320px;margin-bottom:14px;}
+.es{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:9px;text-align:center;}
+.esv{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;}
+.esv.g{color:var(--accent);}.esv.r{color:var(--danger);}.esv.y{color:var(--gold);}
+.esl2{font-size:9px;color:var(--dim);margin-top:2px;}
+.edu{
+  background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.14);
+  border-radius:12px;padding:11px 14px;
+  font-size:12px;color:var(--dim);line-height:1.6;text-align:center;
+  width:100%;max-width:340px;margin-bottom:16px;
+}
+.edu strong{color:var(--text);}
+.btn-re{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
+  padding:11px 32px;border-radius:50px;
+  background:var(--card);border:1.5px solid var(--border);
+  color:var(--text);cursor:pointer;transition:all .16s;
+}
+.btn-re:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);}
+</style>
+</head>
+<body>
+
+<!-- START OVERLAY -->
+<div class="overlay" id="scr-start">
+  <div class="si">🧺</div>
+  <h1 class="st">Bersih-Bersih</h1>
+  <p class="ss">Tangkap semua sampah yang jatuh dari langit.<br>Jangan ada yang lolos!</p>
+  <div class="hc-list">
+    <div class="hc"><div class="hi">👆</div><div><strong>Gerakkan keranjang</strong>Sentuh/geser layar kiri-kanan untuk pindahkan keranjang</div></div>
+    <div class="hc"><div class="hi">♻️</div><div><strong>Tangkap sampah</strong>+5 poin per tangkapan. Combo = bonus poin ekstra!</div></div>
+    <div class="hc"><div class="hi">⚡</div><div><strong>Kecepatan naik</strong>Makin lama makin cepat. Tetap fokus!</div></div>
+  </div>
+  <button class="btn-go" onclick="startGame()">🚀 Mulai Sekarang</button>
+</div>
+
+<!-- END OVERLAY -->
+<div class="overlay off" id="scr-end">
+  <div class="et" id="e-trophy">🏆</div>
+  <div class="new-rec" id="e-newrec">⭐ REKOR BARU!</div>
+  <div class="er" id="e-rank">–</div>
+  <div class="esb" id="e-score">0</div>
+  <div class="esl">POIN TOTAL</div>
+  <div class="e-stats">
+    <div class="es"><div class="esv g" id="e-caught">0</div><div class="esl2">Tertangkap</div></div>
+    <div class="es"><div class="esv r" id="e-missed">0</div><div class="esl2">Terlewat</div></div>
+    <div class="es"><div class="esv y" id="e-combo">0×</div><div class="esl2">Combo Max</div></div>
+  </div>
+  <div class="edu" id="e-edu"></div>
+  <button class="btn-re" onclick="restartGame()">🔄 Main Lagi</button>
+</div>
+
+<!-- GAME ROOT -->
+<div id="root">
+  <div id="hud">
+    <div class="brand">BERSIH-BERSIH 🌍</div>
+    <div class="best-pill">⭐ BEST <b id="best-val">0</b></div>
+  </div>
+
+  <div id="score-row">
+    <div>
+      <div style="font-size:9px;font-weight:600;color:var(--dim);letter-spacing:.8px;">SKOR</div>
+      <div class="score-num" id="score-val">0</div>
+    </div>
+    <div class="mid-col">
+      <div class="speed-row"><span>KECEPATAN</span><span id="spd-lv">LV 1</span></div>
+      <div class="speed-track"><div class="speed-bar" id="spd-bar" style="width:10%"></div></div>
+      <div class="combo-txt" id="combo-txt"></div>
+    </div>
+    <div class="timer-wrap">
+      <svg class="timer-svg" viewBox="0 0 36 36">
+        <circle class="t-track" cx="18" cy="18" r="15"/>
+        <circle class="t-arc" id="t-arc" cx="18" cy="18" r="15"/>
+      </svg>
+      <div class="timer-num" id="t-num">60</div>
+    </div>
+  </div>
+
+  <div id="arena-wrap">
+    <div id="arena">
+      <div class="moon"></div>
+      <div class="cloud">☁️</div>
+      <div class="cloud">☁️</div>
+      <div class="ground-deco">
+        <div class="g-tree">🌳</div><div class="g-tree">🌲</div>
+        <div class="g-tree">🌴</div><div class="g-tree">🌲</div><div class="g-tree">🌳</div>
+      </div>
+      <div class="danger-line"></div>
+      <div class="basket" id="basket">
+        <div class="basket-body">🧺</div>
+        <div class="basket-glow"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panels">
+    <div class="panel">
+      <div class="pl">✅ Tertangkap</div>
+      <div class="pv g" id="p-caught">0</div>
+      <div class="ps">+5 poin / sampah</div>
+    </div>
+    <div class="panel">
+      <div class="pl">❌ Terlewat</div>
+      <div class="pv r" id="p-missed">0</div>
+      <div class="ps">jangan kelewat!</div>
+    </div>
+    <div class="panel">
+      <div class="pl">🔥 Combo</div>
+      <div class="pv y" id="p-combo">0×</div>
+      <div class="ps">berturut-turut</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DURATION = 60;
+
+// 40+ emoji sampah — banyak & variatif!
+const TRASH = [
+  // buah
+  '🍌','🍎','🍊','🍋','🍇','🍓','🫐','🍑','🥝','🍒','🥭','🍍',
+  // sayur
+  '🥦','🥕','🌽','🧅','🥬','🫛','🥔','🍆','🫑',
+  // kemasan plastik
+  '🧴','🛍️','🍶','💊','🧃','🥤','🫙','🔋',
+  // kertas/kardus
+  '📰','📦','📝','📚',
+  // makanan sisa
+  '☕','🍵','🥡','🍱','🌮','🍕','🍔','🌯',
+  // lain-lain
+  '🗑️','🪣','🧼','🖊️','📱'
+];
+
+const RANKS = [
+  {min:0,   trophy:'😅', rank:'Pemula Lingkungan',    tip:'<strong>Fakta:</strong> Indonesia hasilkan ~65 juta ton sampah/tahun. Yuk mulai pisahkan sampah di rumah!'},
+  {min:30,  trophy:'🌿', rank:'Pejuang Hijau',        tip:'<strong>Tau ga?</strong> Botol plastik butuh 400+ tahun untuk terurai. Bawa botol minum sendiri yuk!'},
+  {min:80,  trophy:'🏅', rank:'Guardian Bumi',        tip:'<strong>Keren!</strong> Daur ulang 1 ton kertas bisa menyelamatkan 17 pohon dewasa!'},
+  {min:150, trophy:'🏆', rank:'Pahlawan Lingkungan',  tip:'<strong>Luar biasa!</strong> Kamu pahlawan bumi sejati. Ajak teman-temanmu peduli lingkungan!'},
+  {min:240, trophy:'🌟', rank:'Legenda Hijau ✨',      tip:'<strong>LEGENDARIS!</strong> Skor spektakuler! Bumi berterima kasih padamu 🌍'}
+];
+
+const ARC = 94.25; // 2π×15
+
+const S = {
+  score:0, combo:0, maxCombo:0, caught:0, missed:0,
+  basket:160, timer:DURATION,
+  spawnDelay:950, speedLevel:1,
+  running:false, bestScore:0,
+  timerInt:null, spawnInt:null, speedInt:null
+};
+
+const arena    = document.getElementById('arena');
+const basketEl = document.getElementById('basket');
+const scoreEl  = document.getElementById('score-val');
+const comboTxt = document.getElementById('combo-txt');
+const tNum     = document.getElementById('t-num');
+const tArc     = document.getElementById('t-arc');
+const spdBar   = document.getElementById('spd-bar');
+const spdLv    = document.getElementById('spd-lv');
+const pCaught  = document.getElementById('p-caught');
+const pMissed  = document.getElementById('p-missed');
+const pCombo   = document.getElementById('p-combo');
+const bestVal  = document.getElementById('best-val');
+
+function updateArc(s){
+  tArc.style.strokeDashoffset = ARC*(1-s/DURATION);
+  tArc.classList.toggle('low',s<=10);
+  tNum.className='timer-num'+(s<=10?' pulse':'');
+}
+
+function startGame(){
+  document.getElementById('scr-start').classList.add('off');
+  document.getElementById('scr-end').classList.add('off');
+  Object.assign(S,{score:0,combo:0,maxCombo:0,caught:0,missed:0,
+    timer:DURATION,spawnDelay:950,speedLevel:1,running:true});
+  S.basket = arena.offsetWidth/2;
+  arena.querySelectorAll('.fi,.cf,.bp').forEach(e=>e.remove());
+  scoreEl.textContent='0';
+  tNum.textContent=DURATION;
+  updateArc(DURATION);
+  spdBar.style.width='10%'; spdLv.textContent='LV 1';
+  comboTxt.textContent='';
+  pCaught.textContent='0'; pMissed.textContent='0'; pCombo.textContent='0×';
+  updateBasket();
+  clearAll();
+  S.timerInt=setInterval(()=>{S.timer--;tNum.textContent=S.timer;updateArc(S.timer);if(S.timer<=0)endGame();},1000);
+  doSpawn();
+  S.speedInt=setInterval(upSpeed,10000);
+}
+
+function clearAll(){
+  clearInterval(S.timerInt);
+  clearInterval(S.spawnInt);
+  clearInterval(S.speedInt);
+}
+
+function doSpawn(){
+  clearInterval(S.spawnInt);
+  S.spawnInt=setInterval(spawnItem,S.spawnDelay);
+}
+
+function upSpeed(){
+  if(!S.running||S.spawnDelay<=380)return;
+  S.spawnDelay=Math.max(380,S.spawnDelay-90);
+  S.speedLevel=Math.min(6,S.speedLevel+1);
+  doSpawn();
+  spdBar.style.width=Math.min(100,(S.speedLevel-1)*20+10)+'%';
+  spdLv.textContent='LV '+S.speedLevel;
+}
+
+function spawnItem(){
+  if(!S.running)return;
+  const aW=arena.offsetWidth, aH=arena.offsetHeight;
+  const emoji=TRASH[Math.floor(Math.random()*TRASH.length)];
+  const x=26+Math.random()*(aW-52);
+  const dur=Math.max(1.3,2.8-(S.speedLevel-1)*0.26)+Math.random()*0.35;
+  const el=document.createElement('div');
+  el.className='fi'; el.textContent=emoji;
+  el.style.left=x+'px'; el.style.animationDuration=dur+'s';
+  arena.appendChild(el);
+  const t0=Date.now(), catchY=aH-58;
+  const chk=setInterval(()=>{
+    if(!S.running){clearInterval(chk);el.remove();return;}
+    const cy=((Date.now()-t0)/1000/dur)*(aH+30)-30;
+    if(cy>=catchY){
+      clearInterval(chk); el.remove();
+      const bx=Math.max(30,Math.min(aW-30,S.basket));
+      const hit=Math.abs(x-bx)<48;
+      if(hit){
+        S.caught++; S.combo++;
+        if(S.combo>S.maxCombo)S.maxCombo=S.combo;
+        const mult=S.combo>=5?4:S.combo>=3?2:1;
+        const pts=5*mult; S.score+=pts;
+        flash(bx,catchY,'+'+pts,false);
+        burst(bx,catchY);
+        pCaught.textContent=S.caught;
+      } else {
+        S.missed++; S.combo=0;
+        flash(x,catchY,'✕',true);
+        pMissed.textContent=S.missed;
+        arena.classList.add('shake');
+        setTimeout(()=>arena.classList.remove('shake'),280);
+      }
+      updateHUD();
+    }
+  },36);
+}
+
+function flash(x,y,txt,miss){
+  const el=document.createElement('div');
+  el.className='cf'+(miss?' miss':'');
+  el.textContent=txt; el.style.left=x+'px'; el.style.top=(y-6)+'px';
+  arena.appendChild(el);
+  setTimeout(()=>el.remove(),720);
+}
+
+function burst(x,y){
+  ['✨','⭐','🌿','💚','🌟'].forEach((e,i)=>{
+    const p=document.createElement('div');
+    p.className='bp';
+    const a=(i/5)*Math.PI*2, d=24+Math.random()*16;
+    p.style.setProperty('--tx',Math.cos(a)*d+'px');
+    p.style.setProperty('--ty',Math.sin(a)*d+'px');
+    p.textContent=e; p.style.left=x+'px'; p.style.top=y+'px';
+    arena.appendChild(p);
+    setTimeout(()=>p.remove(),580);
+  });
+}
+
+function updateHUD(){
+  scoreEl.textContent=S.score;
+  scoreEl.classList.add('bump');
+  setTimeout(()=>scoreEl.classList.remove('bump'),230);
+  pCombo.textContent=S.combo+'×';
+  if(S.combo>=2){
+    comboTxt.textContent=`🔥 ${S.combo}× COMBO`;
+    comboTxt.classList.add('pop');
+    setTimeout(()=>comboTxt.classList.remove('pop'),340);
+  } else comboTxt.textContent='';
+}
+
+function updateBasket(){
+  const w=arena.offsetWidth;
+  basketEl.style.left=Math.max(30,Math.min(w-30,S.basket))+'px';
+}
+
+arena.addEventListener('mousemove',e=>{
+  if(!S.running)return;
+  S.basket=e.clientX-arena.getBoundingClientRect().left;
+  updateBasket();
+});
+arena.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!S.running)return;
+  S.basket=e.touches[0].clientX-arena.getBoundingClientRect().left;
+  updateBasket();
+},{passive:false});
+arena.addEventListener('touchstart',e=>{
+  if(!S.running)return;
+  S.basket=e.touches[0].clientX-arena.getBoundingClientRect().left;
+  updateBasket();
+},{passive:true});
+
+function endGame(){
+  S.running=false; clearAll();
+  arena.querySelectorAll('.fi').forEach(e=>e.remove());
+  const newBest=S.score>S.bestScore;
+  if(newBest)S.bestScore=S.score;
+  bestVal.textContent=S.bestScore;
+  const rank=[...RANKS].reverse().find(r=>S.score>=r.min)||RANKS[0];
+  document.getElementById('e-trophy').textContent=rank.trophy;
+  document.getElementById('e-rank').textContent=rank.rank;
+  document.getElementById('e-score').textContent=S.score;
+  document.getElementById('e-caught').textContent=S.caught;
+  document.getElementById('e-missed').textContent=S.missed;
+  document.getElementById('e-combo').textContent=S.maxCombo+'×';
+  document.getElementById('e-edu').innerHTML=rank.tip;
+  document.getElementById('e-newrec').style.display=newBest?'block':'none';
+  document.getElementById('scr-end').classList.remove('off');
+}
+
+function restartGame(){startGame();}
+
+document.head.insertAdjacentHTML('beforeend',`<style>
+  #arena.shake{animation:sk .26s ease-out;}
+  @keyframes sk{0%{transform:translateX(0)}30%{transform:translateX(-5px)}70%{transform:translateX(5px)}100%{transform:translateX(0)}}
+</style>`);
+</script>
+</body>
+</html>
