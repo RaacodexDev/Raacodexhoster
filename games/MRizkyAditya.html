@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bersih-Bersih | Earth Cleanup</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky-top: #0b1a2e;
+  --sky-mid: #0f2744;
+  --sky-bottom: #1a3a5c;
+  --ground: #1a4a2e;
+  --ground-dark: #0d2e1a;
+  --accent: #00e676;
+  --accent-glow: rgba(0,230,118,0.35);
+  --danger: #ff5252;
+  --danger-glow: rgba(255,82,82,0.35);
+  --gold: #ffd740;
+  --gold-glow: rgba(255,215,64,0.4);
+  --text: #e8f5e9;
+  --text-dim: rgba(232,245,233,0.55);
+  --card: rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.08);
+  --basket-w: 72px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: var(--sky-top);
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* ── STARS ── */
+.stars {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(1px 1px at 10% 12%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 5%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 18%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 8%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 15%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 6%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 18% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 62% 28%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 92% 22%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 45%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 78% 40%, rgba(255,255,255,0.4) 0%, transparent 100%);
+}
+
+/* ── WRAPPER ── */
+.game-wrapper {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%; max-width: 480px;
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+/* ── HEADER ── */
+.header {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.game-brand {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 20px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent), #69f0ae);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.game-brand span { color: var(--text-dim); -webkit-text-fill-color: rgba(232,245,233,0.55); font-weight: 400; font-size: 13px; margin-left: 6px; font-family: 'Poppins', sans-serif; }
+
+/* ── HUD STATS ── */
+.hud-stats {
+  display: flex; gap: 8px;
+}
+.hud-pill {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+  color: var(--text-dim);
+}
+.hud-pill .val {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px; font-weight: 800;
+  color: var(--text);
+}
+.hud-pill.accent-pill .val { color: var(--accent); }
+.hud-pill.danger-pill .val { color: var(--danger); }
+.hud-pill.gold-pill .val { color: var(--gold); }
+
+/* ── SCORE BAR ── */
+.score-bar {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+}
+.score-main {
+  font-family: 'Syne', sans-serif;
+  font-size: 42px; font-weight: 800;
+  line-height: 1; letter-spacing: -2px;
+  color: var(--text);
+  text-shadow: 0 0 40px var(--accent-glow);
+  transition: all 0.2s;
+  min-width: 80px;
+}
+.score-main.bump { animation: scoreBump 0.25s ease-out; }
+@keyframes scoreBump { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+.score-right { flex:1; display:flex; flex-direction:column; gap:4px; }
+.score-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform:uppercase; letter-spacing: 1px; }
+
+.combo-display {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; font-weight: 800; color: var(--gold);
+  opacity: 0; transition: opacity 0.3s;
+  display: flex; align-items: center; gap: 4px;
+}
+.combo-display.show { opacity: 1; animation: comboFlash 0.4s ease-out; }
+@keyframes comboFlash { 0%{transform:scale(0.8)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+/* TIMER ARC */
+.timer-wrap {
+  position: relative; width: 56px; height: 56px;
+  flex-shrink: 0;
+}
+.timer-svg { width: 56px; height: 56px; transform: rotate(-90deg); }
+.timer-track { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 4; }
+.timer-arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round;
+  stroke-dasharray: 138.23; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke 0.5s; }
+.timer-arc.low { stroke: var(--danger); }
+.timer-text {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
+  color: var(--text);
+}
+.timer-text.pulse { animation: timerPulse 0.5s ease-in-out infinite; }
+@keyframes timerPulse { 0%,100%{transform:scale(1);color:var(--text)} 50%{transform:scale(1.15);color:var(--danger)} }
+
+/* ── ARENA ── */
+.arena-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.arena {
+  width: 100%; height: 340px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    #0b1a2e 0%,
+    #0f2744 25%,
+    #1a3a5c 55%,
+    #14602c 75%,
+    #0d3d1a 100%
+  );
+  border: 1.5px solid var(--card-border);
+  position: relative; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Horizon glow */
+.arena::before {
+  content:''; position:absolute;
+  left:0; right:0; top:58%; height:3px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), rgba(0,230,118,0.12), transparent);
+  pointer-events:none;
+}
+
+/* Ground stripe */
+.arena::after {
+  content:''; position:absolute;
+  left:0; right:0; bottom:0; height:25%;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.3));
+  pointer-events:none; border-radius:0 0 18px 18px;
+}
+
+/* Moon */
+.moon {
+  position:absolute; top:14px; right:24px;
+  width:28px; height:28px; border-radius:50%;
+  background: radial-gradient(circle at 35% 35%, #fffde7, #ffd740);
+  box-shadow: 0 0 20px rgba(255,215,64,0.5), 0 0 60px rgba(255,215,64,0.15);
+  pointer-events:none;
+}
+
+/* Clouds */
+.cloud {
+  position:absolute; pointer-events:none;
+  font-size:22px; opacity:0.18;
+  animation: drift linear infinite;
+}
+.cloud:nth-child(1) { top:18%; animation-duration:28s; animation-delay:-5s; }
+.cloud:nth-child(2) { top:32%; animation-duration:36s; animation-delay:-14s; }
+@keyframes drift { from{left:-60px} to{left:calc(100% + 60px)} }
+
+/* Trees on ground */
+.ground-deco {
+  position:absolute; bottom:0; left:0; right:0;
+  display:flex; align-items:flex-end; justify-content:space-between;
+  padding:0 8px; pointer-events:none; height:52px;
+}
+.g-tree { font-size: 28px; filter: brightness(0.5) saturate(0.6); }
+
+/* Basket */
+.basket {
+  position: absolute;
+  bottom: 12px;
+  width: var(--basket-w);
+  height: 48px;
+  transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  transition: left 0.04s linear;
+  z-index: 10;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+}
+.basket-body {
+  width: 60px; height: 44px;
+  background: linear-gradient(160deg, #8d6e63, #4e342e);
+  border-radius: 4px 4px 10px 10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; position:relative;
+  border: 2px solid #a1887f;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.basket-body::before {
+  content:''; position:absolute; top:-3px; left:-3px; right:-3px; height:6px;
+  background:#6d4c41; border-radius:3px; border:1px solid #8d6e63;
+}
+.basket-glow {
+  position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+  width:50px; height:8px; border-radius:50%;
+  background: var(--accent-glow);
+  filter: blur(4px);
+}
+
+/* Falling item */
+.falling-item {
+  position:absolute;
+  font-size: 26px;
+  pointer-events: none;
+  z-index:5;
+  transform: translateX(-50%);
+  animation: fall linear forwards;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+@keyframes fall { from{top:-36px} to{top:110%} }
+
+/* Catch flash */
+.catch-flash {
+  position:absolute; pointer-events:none;
+  font-family:'Syne',sans-serif; font-size:18px; font-weight:800;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent-glow);
+  animation: riseUp 0.7s ease-out forwards;
+  z-index:20;
+}
+.catch-flash.miss { color: var(--danger); text-shadow: 0 0 12px var(--danger-glow); }
+@keyframes riseUp { 0%{opacity:1;transform:translateY(0) translateX(-50%) scale(1)} 100%{opacity:0;transform:translateY(-48px) translateX(-50%) scale(0.8)} }
+
+/* Particle burst */
+.burst-particle {
+  position:absolute; pointer-events:none;
+  font-size:14px; z-index:20;
+  animation: burstFly 0.6s ease-out forwards;
+}
+@keyframes burstFly {
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0.3)}
+}
+
+/* ── DANGER ZONE ── */
+.danger-bar {
+  position:absolute; bottom:56px; left:0; right:0; height:2px;
+  background: repeating-linear-gradient(90deg, var(--danger) 0, var(--danger) 8px, transparent 8px, transparent 14px);
+  opacity: 0.3; pointer-events:none;
+}
+
+/* ── BOTTOM PANELS ── */
+.panels {
+  width:100%; display:flex; gap:8px;
+}
+.panel {
+  flex:1; background:var(--card); border:1px solid var(--card-border);
+  border-radius:14px; padding:10px 12px;
+  display:flex; flex-direction:column; gap:2px;
+}
+.panel-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); }
+.panel-val { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; line-height:1.1; }
+.panel-val.green { color:var(--accent); text-shadow:0 0 20px var(--accent-glow); }
+.panel-val.red { color:var(--danger); text-shadow:0 0 20px var(--danger-glow); }
+.panel-sub { font-size:10px; color:var(--text-dim); margin-top:1px; }
+
+/* ── SPEED INDICATOR ── */
+.speed-bar-wrap {
+  width:100%; display:flex; flex-direction:column; gap:4px;
+}
+.speed-label { font-size:11px; color:var(--text-dim); font-weight:600; display:flex; justify-content:space-between; }
+.speed-track { height:5px; background:rgba(255,255,255,0.07); border-radius:4px; overflow:hidden; }
+.speed-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width 0.5s; }
+
+/* ── SCREENS ── */
+.overlay {
+  position: fixed; inset:0; z-index:100;
+  background: rgba(7,15,25,0.96);
+  display: flex; flex-direction:column; align-items:center; justify-content:center;
+  padding: 24px;
+  backdrop-filter: blur(12px);
+}
+.overlay.hidden { display:none; }
+
+/* Start screen */
+.start-icon { font-size:80px; animation:floatBob 2.5s ease-in-out infinite; margin-bottom:8px; }
+@keyframes floatBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.start-title {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size: clamp(30px,8vw,48px);
+  letter-spacing:-1px;
+  background:linear-gradient(135deg,#fff 30%,var(--accent));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  text-align:center; margin-bottom:4px;
+}
+.start-sub { font-size:14px; color:var(--text-dim); text-align:center; margin-bottom:24px; line-height:1.6; }
+
+.how-cards {
+  display:flex; flex-direction:column; gap:8px; width:100%; max-width:360px; margin-bottom:24px;
+}
+.how-card {
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px; padding:10px 14px;
+  display:flex; align-items:center; gap:12px;
+  font-size:13px; color:var(--text-dim);
+}
+.how-card strong { color:var(--text); display:block; font-size:13px; margin-bottom:1px; }
+.how-icon { font-size:24px; flex-shrink:0; }
+
+.btn-start {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:17px; letter-spacing:0.5px;
+  padding:14px 44px; border:none; border-radius:50px;
+  background:linear-gradient(135deg,var(--accent),#00c853);
+  color:#051a0a; cursor:pointer;
+  box-shadow:0 8px 32px var(--accent-glow), 0 2px 0 rgba(0,0,0,0.3);
+  transition:all 0.18s;
+}
+.btn-start:hover { transform:translateY(-2px); box-shadow:0 14px 40px var(--accent-glow); }
+.btn-start:active { transform:scale(0.96); }
+
+/* End screen */
+.end-trophy { font-size:72px; animation:floatBob 2.5s ease-in-out infinite; margin-bottom:4px; }
+.end-rank {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size: clamp(22px,6vw,36px); text-align:center;
+  color:var(--gold); text-shadow:0 0 30px var(--gold-glow);
+  margin-bottom:4px;
+}
+.end-score-big {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size: clamp(52px,14vw,80px); line-height:1;
+  color:#fff; letter-spacing:-3px;
+  text-shadow:0 0 50px var(--accent-glow);
+}
+.end-score-label { font-size:12px; color:var(--text-dim); text-align:center; margin-bottom:16px; }
+.end-stats {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:8px; width:100%; max-width:340px; margin-bottom:20px;
+}
+.end-stat {
+  background:var(--card); border:1px solid var(--card-border);
+  border-radius:12px; padding:10px;
+  text-align:center;
+}
+.end-stat-val { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; }
+.end-stat-val.green { color:var(--accent); }
+.end-stat-val.gold { color:var(--gold); }
+.end-stat-val.red { color:var(--danger); }
+.end-stat-label { font-size:10px; color:var(--text-dim); margin-top:2px; }
+
+.edu-tip {
+  background:rgba(0,230,118,0.07); border:1px solid rgba(0,230,118,0.15);
+  border-radius:14px; padding:14px 16px;
+  font-size:13px; color:var(--text-dim); line-height:1.6;
+  text-align:center; width:100%; max-width:360px;
+  margin-bottom:20px;
+}
+.edu-tip strong { color:var(--text); }
+
+.btn-restart {
+  font-family:'Syne',sans-serif; font-weight:800; font-size:16px;
+  padding:13px 36px; border:none; border-radius:50px;
+  background:var(--card); border:1.5px solid var(--card-border);
+  color:var(--text); cursor:pointer;
+  transition:all 0.18s;
+}
+.btn-restart:hover { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2); transform:translateY(-1px); }
+
+/* BEST SCORE badge */
+.best-badge {
+  background:linear-gradient(135deg,var(--gold),#ff8f00);
+  color:#1a0a00; font-family:'Syne',sans-serif; font-weight:800;
+  font-size:12px; padding:4px 12px; border-radius:20px;
+  margin-bottom:8px; display:inline-flex; align-items:center; gap:4px;
+}
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+
+<!-- ── START SCREEN ── -->
+<div class="overlay" id="start-screen">
+  <div class="start-icon">🧺</div>
+  <h1 class="start-title">Bersih-Bersih</h1>
+  <p class="start-sub">Tangkap semua sampah yang jatuh dari langit.<br>Jangan sampai ada yang lolos!</p>
+  <div class="how-cards">
+    <div class="how-card">
+      <div class="how-icon">👆</div>
+      <div><strong>Gerakkan keranjang</strong>Sentuh/klik layar untuk memindahkan keranjang ke kiri-kanan</div>
+    </div>
+    <div class="how-card">
+      <div class="how-icon">🗑️</div>
+      <div><strong>Tangkap sampah</strong>Setiap tangkapan = +5 poin. Combo beruntun = bonus poin ekstra!</div>
+    </div>
+    <div class="how-card">
+      <div class="how-icon">⚡</div>
+      <div><strong>Kecepatan naik</strong>Sampah makin cepat jatuh seiring waktu. Tetap fokus!</div>
+    </div>
+  </div>
+  <button class="btn-start" onclick="startGame()">🚀 Mulai Sekarang</button>
+</div>
+
+<!-- ── END SCREEN ── -->
+<div class="overlay hidden" id="end-screen">
+  <div class="end-trophy" id="end-trophy">🏆</div>
+  <div class="best-badge" id="best-badge" style="display:none">⭐ REKOR BARU!</div>
+  <div class="end-rank" id="end-rank">Pahlawan Lingkungan</div>
+  <div class="end-score-big" id="end-score-big">0</div>
+  <div class="end-score-label">POIN TOTAL</div>
+  <div class="end-stats">
+    <div class="end-stat">
+      <div class="end-stat-val green" id="e-caught">0</div>
+      <div class="end-stat-label">Tertangkap</div>
+    </div>
+    <div class="end-stat">
+      <div class="end-stat-val red" id="e-missed">0</div>
+      <div class="end-stat-label">Terlewat</div>
+    </div>
+    <div class="end-stat">
+      <div class="end-stat-val gold" id="e-combo">0</div>
+      <div class="end-stat-label">Combo Max</div>
+    </div>
+  </div>
+  <div class="edu-tip" id="edu-tip"></div>
+  <button class="btn-restart" onclick="restartGame()">🔄 Main Lagi</button>
+</div>
+
+<!-- ── GAME UI ── -->
+<div class="game-wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="game-brand">BERSIH-BERSIH <span>🌍</span></div>
+    <div class="hud-stats">
+      <div class="hud-pill gold-pill">
+        <span>⭐ BEST</span>
+        <span class="val" id="best-disp">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score & Timer row -->
+  <div class="score-bar">
+    <div>
+      <div class="score-label">SKOR</div>
+      <div class="score-main" id="score-disp">0</div>
+      <div class="combo-display" id="combo-disp">🔥 0× COMBO</div>
+    </div>
+    <div class="score-right">
+      <div class="speed-bar-wrap">
+        <div class="speed-label"><span>KECEPATAN</span><span id="speed-lv">LV 1</span></div>
+        <div class="speed-track"><div class="speed-fill" id="speed-fill" style="width:10%"></div></div>
+      </div>
+    </div>
+    <div class="timer-wrap">
+      <svg class="timer-svg" viewBox="0 0 48 48">
+        <circle class="timer-track" cx="24" cy="24" r="22"/>
+        <circle class="timer-arc" id="timer-arc" cx="24" cy="24" r="22"/>
+      </svg>
+      <div class="timer-text" id="timer-disp">60</div>
+    </div>
+  </div>
+
+  <!-- Arena -->
+  <div class="arena-wrap">
+    <div class="arena" id="arena">
+      <div class="moon"></div>
+      <div class="cloud">☁️</div>
+      <div class="cloud">☁️</div>
+      <div class="ground-deco">
+        <div class="g-tree">🌳</div>
+        <div class="g-tree">🌲</div>
+        <div class="g-tree">🌴</div>
+        <div class="g-tree">🌲</div>
+        <div class="g-tree">🌳</div>
+      </div>
+      <div class="danger-bar"></div>
+      <div class="basket" id="basket">
+        <div class="basket-body">🧺</div>
+        <div class="basket-glow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-label">✅ Tertangkap</div>
+      <div class="panel-val green" id="caught-disp">0</div>
+      <div class="panel-sub">+5 poin tiap sampah</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">❌ Terlewat</div>
+      <div class="panel-val red" id="missed-disp">0</div>
+      <div class="panel-sub">jangan sampai banyak!</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">🔥 Combo</div>
+      <div class="panel-val" style="color:var(--gold)" id="combo-now-disp">0×</div>
+      <div class="panel-sub">berturut-turut</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ──
+const DURATION = 60;
+const TRASH = ['🍌','🧴','📰','🍎','🛍️','📦','☕','💊','🥦','🥤','🥛','🗑️','🧃'];
+const RANKS = [
+  { min:0,   trophy:'😅', title:'Pemula Lingkungan',   tip:'<strong>Fakta:</strong> Indonesia menghasilkan ~65 juta ton sampah per tahun. Mulai dari hal kecil: pisahkan sampah di rumahmu!' },
+  { min:30,  trophy:'🌿', title:'Pejuang Hijau',       tip:'<strong>Tahukah kamu?</strong> Botol plastik butuh 400+ tahun untuk terurai. Selalu bawa botol minum sendiri ya!' },
+  { min:80,  trophy:'🏅', title:'Guardian Bumi',       tip:'<strong>Keren!</strong> Daur ulang 1 ton kertas bisa menyelamatkan 17 pohon dewasa. Terus jaga lingkungan!' },
+  { min:150, trophy:'🏆', title:'Pahlawan Lingkungan', tip:'<strong>Luar biasa!</strong> Kamu adalah pahlawan bumi sejati. Ajak teman-temanmu untuk ikut peduli lingkungan!' },
+  { min:240, trophy:'🌟', title:'Legenda Hijau ✨',     tip:'<strong>LEGENDARIS!</strong> Skor spektakuler! Kamu layak menjadi duta lingkungan. Bumi berterima kasih padamu! 🌍' }
+];
+
+// ── STATE ──
+const S = {
+  score: 0, combo: 0, maxCombo: 0,
+  caught: 0, missed: 0,
+  basket: 240, arenaW: 480, arenaH: 340,
+  timer: DURATION, timerInterval: null,
+  spawnInterval: null, spawnDelay: 900,
+  spawnStep: 0, speedLevel: 1,
+  running: false, bestScore: 0,
+  items: []
+};
+
+// ── DOM ──
+const arena      = document.getElementById('arena');
+const basketEl   = document.getElementById('basket');
+const scoreEl    = document.getElementById('score-disp');
+const comboEl    = document.getElementById('combo-disp');
+const comboNowEl = document.getElementById('combo-now-disp');
+const caughtEl   = document.getElementById('caught-disp');
+const missedEl   = document.getElementById('missed-disp');
+const timerEl    = document.getElementById('timer-disp');
+const timerArc   = document.getElementById('timer-arc');
+const timerTxt   = document.getElementById('timer-disp');
+const speedFill  = document.getElementById('speed-fill');
+const speedLv    = document.getElementById('speed-lv');
+const bestEl     = document.getElementById('best-disp');
+
+// Arc circumference = 2π×22 ≈ 138.23
+const ARC_LEN = 138.23;
+
+function updateArc(secs) {
+  const ratio = secs / DURATION;
+  timerArc.style.strokeDashoffset = ARC_LEN * (1 - ratio);
+  if (secs <= 10) timerArc.classList.add('low');
+  else timerArc.classList.remove('low');
+  timerEl.className = 'timer-text' + (secs <= 10 ? ' pulse' : '');
+}
+
+// ── START ──
+function startGame() {
+  document.getElementById('start-screen').classList.add('hidden');
+  S.score = 0; S.combo = 0; S.maxCombo = 0;
+  S.caught = 0; S.missed = 0;
+  S.timer = DURATION; S.spawnDelay = 900;
+  S.spawnStep = 0; S.speedLevel = 1;
+  S.running = true;
+
+  S.arenaW = arena.offsetWidth;
+  S.arenaH = arena.offsetHeight;
+  S.basket = S.arenaW / 2;
+
+  arena.querySelectorAll('.falling-item,.catch-flash,.burst-particle').forEach(e=>e.remove());
+  S.items = [];
+
+  updateHUD();
+  updateArc(DURATION);
+  timerEl.textContent = DURATION;
+  speedFill.style.width = '10%';
+  speedLv.textContent = 'LV 1';
+  updateBasket();
+
+  // Timer
+  S.timerInterval = setInterval(() => {
+    S.timer--;
+    timerEl.textContent = S.timer;
+    updateArc(S.timer);
+    if (S.timer <= 0) endGame();
+  }, 1000);
+
+  // Spawn
+  scheduleSpawn();
+
+  // Speed increase every 10s
+  S.speedInterval = setInterval(increaseSpeed, 10000);
+}
+
+function scheduleSpawn() {
+  if (S.spawnInterval) clearInterval(S.spawnInterval);
+  S.spawnInterval = setInterval(spawnItem, S.spawnDelay);
+}
+
+function increaseSpeed() {
+  if (!S.running) return;
+  if (S.spawnDelay > 380) {
+    S.spawnDelay = Math.max(380, S.spawnDelay - 90);
+    S.speedLevel = Math.min(6, S.speedLevel + 1);
+    scheduleSpawn();
+    speedFill.style.width = Math.min(100, (S.speedLevel-1) * 20 + 10) + '%';
+    speedLv.textContent = 'LV ' + S.speedLevel;
+  }
+}
+
+function spawnItem() {
+  if (!S.running) return;
+  S.arenaW = arena.offsetWidth;
+  S.arenaH = arena.offsetHeight;
+
+  const emoji = TRASH[Math.floor(Math.random() * TRASH.length)];
+  const x = 30 + Math.random() * (S.arenaW - 60);
+  // Fall duration decreases with speed level
+  const fallDur = Math.max(1.4, 3.0 - (S.speedLevel - 1) * 0.28) + Math.random() * 0.4;
+
+  const el = document.createElement('div');
+  el.className = 'falling-item';
+  el.textContent = emoji;
+  el.style.left = x + 'px';
+  el.style.animationDuration = fallDur + 's';
+  arena.appendChild(el);
+
+  const item = { el, x, startTime: Date.now(), fallDur };
+  S.items.push(item);
+
+  // Check collision
+  const catchZone = S.arenaH - 70;
+  const checker = setInterval(() => {
+    if (!S.running) { clearInterval(checker); el.remove(); return; }
+    const elapsed = (Date.now() - item.startTime) / 1000;
+    const currentY = (elapsed / item.fallDur) * (S.arenaH + 40) - 36;
+
+    if (currentY >= catchZone) {
+      clearInterval(checker);
+      const bx = Math.max(36, Math.min(S.arenaW - 36, S.basket));
+      const hit = Math.abs(x - bx) < 44;
+      el.remove();
+      S.items = S.items.filter(i => i !== item);
+
+      if (hit) {
+        S.caught++;
+        S.combo++;
+        if (S.combo > S.maxCombo) S.maxCombo = S.combo;
+        const mult = S.combo >= 5 ? 4 : S.combo >= 3 ? 2 : 1;
+        const pts = 5 * mult;
+        S.score += pts;
+        showCatchFlash(bx, catchZone, `+${pts}`, false);
+        spawnBurst(bx, catchZone);
+        caughtEl.textContent = S.caught;
+      } else {
+        S.missed++;
+        S.combo = 0;
+        missedEl.textContent = S.missed;
+        showCatchFlash(x, catchZone + 10, '✕', true);
+        arena.classList.add('miss-shake');
+        setTimeout(() => arena.classList.remove('miss-shake'), 300);
+      }
+      updateHUD();
+    }
+  }, 40);
+}
+
+function showCatchFlash(x, y, txt, isMiss) {
+  const el = document.createElement('div');
+  el.className = 'catch-flash' + (isMiss ? ' miss' : '');
+  el.textContent = txt;
+  el.style.left = x + 'px';
+  el.style.top = (y - 10) + 'px';
+  arena.appendChild(el);
+  setTimeout(() => el.remove(), 750);
+}
+
+function spawnBurst(x, y) {
+  const emojis = ['✨','⭐','🌟','💚','🌿'];
+  for (let i = 0; i < 5; i++) {
+    const p = document.createElement('div');
+    p.className = 'burst-particle';
+    const angle = (i / 5) * Math.PI * 2;
+    const dist = 28 + Math.random() * 22;
+    p.style.setProperty('--tx', Math.cos(angle)*dist + 'px');
+    p.style.setProperty('--ty', Math.sin(angle)*dist + 'px');
+    p.textContent = emojis[i % emojis.length];
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    arena.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+
+function updateHUD() {
+  // Score
+  scoreEl.textContent = S.score;
+  scoreEl.classList.add('bump');
+  setTimeout(() => scoreEl.classList.remove('bump'), 250);
+
+  // Combo
+  if (S.combo >= 2) {
+    comboEl.textContent = `🔥 ${S.combo}× COMBO`;
+    comboEl.classList.add('show');
+  } else {
+    comboEl.classList.remove('show');
+  }
+  comboNowEl.textContent = S.combo + '×';
+}
+
+function updateBasket() {
+  const w = arena.offsetWidth || S.arenaW;
+  const bx = Math.max(36, Math.min(w - 36, S.basket));
+  basketEl.style.left = bx + 'px';
+}
+
+// ── INPUT ──
+arena.addEventListener('mousemove', e => {
+  if (!S.running) return;
+  const r = arena.getBoundingClientRect();
+  S.basket = e.clientX - r.left;
+  updateBasket();
+});
+arena.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!S.running) return;
+  const r = arena.getBoundingClientRect();
+  S.basket = e.touches[0].clientX - r.left;
+  updateBasket();
+}, { passive: false });
+arena.addEventListener('click', e => {
+  const r = arena.getBoundingClientRect();
+  S.basket = e.clientX - r.left;
+  updateBasket();
+});
+
+// ── END ──
+function endGame() {
+  S.running = false;
+  clearInterval(S.timerInterval);
+  clearInterval(S.spawnInterval);
+  clearInterval(S.speedInterval);
+  arena.querySelectorAll('.falling-item').forEach(e => e.remove());
+
+  const newBest = S.score > S.bestScore;
+  if (newBest) S.bestScore = S.score;
+  bestEl.textContent = S.bestScore;
+
+  const rank = [...RANKS].reverse().find(r => S.score >= r.min) || RANKS[0];
+  document.getElementById('end-trophy').textContent = rank.trophy;
+  document.getElementById('end-rank').textContent = rank.title;
+  document.getElementById('end-score-big').textContent = S.score;
+  document.getElementById('e-caught').textContent = S.caught;
+  document.getElementById('e-missed').textContent = S.missed;
+  document.getElementById('e-combo').textContent = S.maxCombo + '×';
+  document.getElementById('edu-tip').innerHTML = rank.tip;
+
+  const badge = document.getElementById('best-badge');
+  badge.style.display = newBest ? 'inline-flex' : 'none';
+
+  document.getElementById('end-screen').classList.remove('hidden');
+}
+
+function restartGame() {
+  document.getElementById('end-screen').classList.add('hidden');
+  startGame();
+}
+
+// miss-shake style
+const style = document.createElement('style');
+style.textContent = `
+  .miss-shake { animation: mShake 0.28s ease-out; }
+  @keyframes mShake { 0%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} 100%{transform:translateX(0)} }
+`;
+document.head.appendChild(style);
+</script>
+</body>
+</html>
